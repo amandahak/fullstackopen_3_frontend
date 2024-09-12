@@ -6,19 +6,19 @@ import Filter from './components/Filter'
 import Notification from './components/Notification'
 
 import personService from './services/persons'
-import  './App.css'
+import './App.css'
 
 const App = () => {
   const [persons, setPersons] = useState([]) 
   const [newName, setNewName] = useState('')
   const [newNumber, setNewNumber] = useState('')
   const [filter, setFilter] = useState('')
-  const [info, setInfo] = useState({ message: null})
+  const [info, setInfo] = useState({ message: null })
 
   useEffect(() => {
-    personService.getAll().then((initialPersons => 
+    personService.getAll().then(initialPersons => 
       setPersons(initialPersons)
-    ))
+    )
   }, [])
 
   const notifyWith = (message, type='info') => {
@@ -27,27 +27,33 @@ const App = () => {
     })
 
     setTimeout(() => {
-      setInfo({ message: null} )
+      setInfo({ message: null })
     }, 3000)
   }
 
   const cleanForm = () => {
     setNewName('')
-    setNewNumber('') 
+    setNewNumber('')
   }
 
   const updatePerson = (person) => {
     const ok = window.confirm(`${newName} is already added to phonebook, replace the number?`)
     if (ok) {
-      
-      personService.update(person.id, {...person, number: newNumber}).then((updatedPerson) => {
-        setPersons(persons.map(p => p.id !== person.id ? p :updatedPerson ))
-        notifyWith(`phon number of ${person.name} updated!`, 'succes')
-      })
-      .catch(() => {
-        notifyWith(`${person.name} has already been removed`, 'error')
-        setPersons(persons.filter(p => p.id !== person.id))
-      })
+      personService.update(person.id, { ...person, number: newNumber })
+        .then(updatedPerson => {
+          setPersons(persons.map(p => p.id !== person.id ? p : updatedPerson))
+          notifyWith(`Phone number of ${person.name} updated!`, 'success')
+        })
+        .catch(error => {
+          console.error('Error updating person:', error)
+          if (error.response && error.response.data) {
+            const errorMessage = error.response.data.error
+            notifyWith(`Failed to update person: ${errorMessage}`, 'error')
+          } else {
+            notifyWith('Failed to update person', 'error')
+          }
+          setPersons(persons.filter(p => p.id !== person.id))
+        })
 
       cleanForm()
     }
@@ -65,35 +71,39 @@ const App = () => {
     personService.create({
       name: newName,
       number: newNumber
-    }).then(createdPerson => {
+    })
+    .then(createdPerson => {
       setPersons(persons.concat(createdPerson))
-
       notifyWith(`${createdPerson.name} added!`, 'success')
-
       cleanForm()
     })
     .catch(error => {
       console.error('Error adding person:', error)
-      notifyWith('Failed to add person', 'error')
+      if (error.response && error.response.data) {
+        const errorMessage = error.response.data.error
+        notifyWith(`Failed to add person: ${errorMessage}`, 'error')
+      } else {
+        notifyWith('Failed to add person', 'error')
+      }
     })
   }
 
   const removePerson = (person) => {
-    const ok = window.confirm(`remove ${person.name} from phonebook?`)
-    if ( ok ) {
-      personService.remove(person.id).then( () => {
-        setPersons(persons.filter(p => p.id !== person.id))
-        notifyWith(`number of ${person.name} deleted!`, 'success')
-      })
-      .catch(error => {
-        console.error('Error removing person:', error)
-        notifyWith('Failed to delete person', 'error')
-      })
+    const ok = window.confirm(`Remove ${person.name} from phonebook?`)
+    if (ok) {
+      personService.remove(person.id)
+        .then(() => {
+          setPersons(persons.filter(p => p.id !== person.id))
+          notifyWith(`Number of ${person.name} deleted!`, 'success')
+        })
+        .catch(error => {
+          console.error('Error removing person:', error)
+          notifyWith('Failed to delete person', 'error')
+        })
     }
   }
 
-  const byFilterField =
-    p => p.name.toLowerCase().includes(filter.toLowerCase())
+  const byFilterField = p => p.name.toLowerCase().includes(filter.toLowerCase())
 
   const personsToShow = filter ? persons.filter(byFilterField) : persons
 
@@ -123,7 +133,6 @@ const App = () => {
       />
     </div>
   )
-
 }
 
 export default App
